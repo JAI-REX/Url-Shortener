@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shorten — URL Shortener</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0B0E11;
+    --surface: #1A1F26;
+    --surface-hover: #20262F;
+    --text: #E8EAED;
+    --text-muted: #6B7280;
+    --accent: #5EEAD4;
+    --accent-dim: #2DD4BF;
+    --border: #2A313C;
+    --error: #F87171;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .wrap {
+    width: 100%;
+    max-width: 560px;
+  }
+
+  .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  h1 {
+    font-size: 32px;
+    font-weight: 700;
+    line-height: 1.15;
+    margin: 0 0 8px;
+    letter-spacing: -0.01em;
+  }
+
+  .sub {
+    color: var(--text-muted);
+    font-size: 15px;
+    margin: 0 0 32px;
+    line-height: 1.5;
+  }
+
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 10px;
+  }
+
+  input[type="url"] {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    padding: 14px 16px;
+    border-radius: 10px;
+    outline: none;
+    transition: border-color 0.15s ease;
+    min-width: 0;
+  }
+
+  input[type="url"]::placeholder { color: var(--text-muted); }
+
+  input[type="url"]:focus {
+    border-color: var(--accent-dim);
+  }
+
+  input[type="url"]:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+
+  button[type="submit"] {
+    background: var(--accent);
+    color: #06201C;
+    border: none;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    padding: 14px 22px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.1s ease;
+    white-space: nowrap;
+  }
+
+  button[type="submit"]:hover { background: var(--accent-dim); }
+  button[type="submit"]:active { transform: scale(0.98); }
+  button[type="submit"]:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  button[type="submit"]:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .options {
+    display: flex;
+    gap: 16px;
+    margin-top: -2px;
+  }
+
+  .opt-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+
+  .opt-field input[type="text"], .opt-field select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    padding: 7px 10px;
+    border-radius: 7px;
+    outline: none;
+  }
+
+  .opt-field input[type="text"] { width: 130px; }
+
+  .opt-field input:focus-visible, .opt-field select:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+
+  /* --- Result / compression moment --- */
+  .result {
+    margin-top: 28px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+    padding: 20px;
+    display: none;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.35s ease, transform 0.35s ease;
+  }
+
+  .result.visible {
+    display: block;
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .result-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .long-url {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+    word-break: break-all;
+    margin-bottom: 14px;
+    line-height: 1.4;
+    overflow: hidden;
+    max-height: 60px;
+    transition: max-height 0.5s ease, opacity 0.5s ease;
+  }
+
+  .long-url.collapsed {
+    max-height: 0;
+    opacity: 0;
+    margin-bottom: 0;
+  }
+
+  .short-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .short-url {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--accent);
+    flex: 1;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .copy-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 8px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease;
+    flex-shrink: 0;
+  }
+
+  .copy-btn:hover { border-color: var(--accent-dim); color: var(--accent); }
+  .copy-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .copy-btn.copied { color: var(--accent); border-color: var(--accent-dim); }
+
+  .meta-row {
+    margin-top: 14px;
+    display: flex;
+    gap: 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .error-box {
+    margin-top: 16px;
+    color: var(--error);
+    font-size: 13px;
+    font-family: 'JetBrains Mono', monospace;
+    display: none;
+  }
+
+  .error-box.visible { display: block; }
+
+  footer {
+    margin-top: 40px;
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  footer a { color: var(--text-muted); text-decoration: none; border-bottom: 1px dotted var(--border); }
+  footer a:hover { color: var(--accent); }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+
+  @media (max-width: 480px) {
+    .input-row { flex-direction: column; }
+    button[type="submit"] { width: 100%; }
+    .options { flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">/ link compression</div>
+  <h1>Make it shorter.</h1>
+  <p class="sub">Paste a long URL below. Get back something you can actually read out loud.</p>
+
+  <form id="shorten-form">
+    <div class="input-row">
+      <input
+        type="url"
+        id="long-url"
+        name="long_url"
+        placeholder="https://example.com/your/very/long/path?with=params"
+        required
+        autocomplete="off"
+      >
+      <button type="submit" id="submit-btn">Shorten</button>
+    </div>
+    <div class="options">
+      <label class="opt-field">
+        Custom alias
+        <input type="text" id="custom-alias" placeholder="optional" maxlength="20">
+      </label>
+      <label class="opt-field">
+        Expires
+        <select id="expiry-days">
+          <option value="">default (1yr)</option>
+          <option value="1">1 day</option>
+          <option value="7">7 days</option>
+          <option value="30">30 days</option>
+          <option value="365">1 year</option>
+        </select>
+      </label>
+    </div>
+  </form>
+
+  <div class="error-box" id="error-box"></div>
+
+  <div class="result" id="result">
+    <div class="result-label">your link, compressed</div>
+    <div class="long-url" id="result-long-url"></div>
+    <div class="short-row">
+      <span class="short-url" id="result-short-url"></span>
+      <button class="copy-btn" id="copy-btn">Copy</button>
+    </div>
+    <div class="meta-row">
+      <span id="meta-expires"></span>
+      <span id="meta-created"></span>
+    </div>
+  </div>
+
+  <footer>
+    API docs at <a href="/docs">/docs</a>
+  </footer>
+</div>
+
+<script>
+const form = document.getElementById('shorten-form');
+const longUrlInput = document.getElementById('long-url');
+const customAliasInput = document.getElementById('custom-alias');
+const expiryDaysSelect = document.getElementById('expiry-days');
+const submitBtn = document.getElementById('submit-btn');
+const errorBox = document.getElementById('error-box');
+const result = document.getElementById('result');
+const resultLongUrl = document.getElementById('result-long-url');
+const resultShortUrl = document.getElementById('result-short-url');
+const copyBtn = document.getElementById('copy-btn');
+const metaExpires = document.getElementById('meta-expires');
+const metaCreated = document.getElementById('meta-created');
+
+function showError(msg) {
+  errorBox.textContent = msg;
+  errorBox.classList.add('visible');
+}
+
+function clearError() {
+  errorBox.classList.remove('visible');
+  errorBox.textContent = '';
+}
+
+function formatDate(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  clearError();
+
+  const longUrl = longUrlInput.value.trim();
+  if (!longUrl) return;
+
+  const payload = { long_url: longUrl };
+  const alias = customAliasInput.value.trim();
+  if (alias) payload.custom_alias = alias;
+  const expiry = expiryDaysSelect.value;
+  if (expiry) payload.expiry_days = parseInt(expiry, 10);
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Shortening…';
+  result.classList.remove('visible');
+
+  try {
+    const res = await fetch('/api/v1/shorten', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      showError(data.detail || 'Something went wrong. Try again.');
+      return;
+    }
+
+    // populate result, then trigger the "compression" reveal
+    resultLongUrl.textContent = data.long_url;
+    resultLongUrl.classList.remove('collapsed');
+    resultShortUrl.textContent = data.short_url;
+    metaExpires.textContent = data.expires_at ? `expires ${formatDate(data.expires_at)}` : 'no expiry';
+    metaCreated.textContent = `created ${formatDate(data.created_at)}`;
+    copyBtn.textContent = 'Copy';
+    copyBtn.classList.remove('copied');
+
+    result.classList.add('visible');
+
+    // the signature moment: the long URL visually collapses away,
+    // leaving only the short code -- literally what just happened
+    setTimeout(() => {
+      resultLongUrl.classList.add('collapsed');
+    }, 900);
+
+  } catch (err) {
+    showError('Could not reach the server. Is it running?');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Shorten';
+  }
+});
+
+copyBtn.addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText(resultShortUrl.textContent);
+    copyBtn.textContent = 'Copied';
+    copyBtn.classList.add('copied');
+    setTimeout(() => {
+      copyBtn.textContent = 'Copy';
+      copyBtn.classList.remove('copied');
+    }, 1500);
+  } catch (err) {
+    showError('Could not copy. Select and copy manually.');
+  }
+});
+</script>
+</body>
+</html>
